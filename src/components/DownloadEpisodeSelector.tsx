@@ -16,7 +16,11 @@ interface DownloadEpisodeSelectorProps {
   /** 当前集数索引（0开始） */
   currentEpisodeIndex: number;
   /** 下载回调 - 支持批量下载 */
-  onDownload: (episodeIndexes: number[]) => void;
+  onDownload: (episodeIndexes: number[], offlineMode: boolean) => void;
+  /** 是否启用离线下载功能 */
+  enableOfflineDownload?: boolean;
+  /** 是否有离线下载权限（管理员或站长） */
+  hasOfflinePermission?: boolean;
 }
 
 /**
@@ -30,11 +34,16 @@ const DownloadEpisodeSelector: React.FC<DownloadEpisodeSelectorProps> = ({
   videoTitle,
   currentEpisodeIndex,
   onDownload,
+  enableOfflineDownload = false,
+  hasOfflinePermission = false,
 }) => {
   // 多选状态 - 使用 Set 存储选中的集数索引
   const [selectedEpisodes, setSelectedEpisodes] = useState<Set<number>>(
     new Set([currentEpisodeIndex])
   );
+
+  // 离线下载模式
+  const [offlineMode, setOfflineMode] = useState(false);
 
   // 每页显示的集数
   const episodesPerPage = 50;
@@ -105,7 +114,7 @@ const DownloadEpisodeSelector: React.FC<DownloadEpisodeSelectorProps> = ({
 
   const handleDownload = () => {
     const episodeIndexes = Array.from(selectedEpisodes).sort((a, b) => a - b);
-    onDownload(episodeIndexes);
+    onDownload(episodeIndexes, offlineMode);
     onClose();
   };
 
@@ -160,6 +169,50 @@ const DownloadEpisodeSelector: React.FC<DownloadEpisodeSelectorProps> = ({
             </button>
           </div>
         </div>
+
+        {/* 离线下载开关 - 仅管理员和站长可见 */}
+        {enableOfflineDownload && hasOfflinePermission && (
+          <div className='flex items-center justify-between px-6 py-3 bg-blue-50 dark:bg-blue-900/10 border-b border-blue-100 dark:border-blue-900/30'>
+            <div className='flex items-center gap-3'>
+              {/* 服务器图标 */}
+              <div className='flex-shrink-0 w-10 h-10 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center'>
+                <svg className='w-5 h-5 text-blue-600 dark:text-blue-400' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                  <path strokeLinecap='round' strokeLinejoin='round' strokeWidth='2' d='M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01' />
+                </svg>
+              </div>
+              <div className='flex-1'>
+                <div className='flex items-center gap-2'>
+                  <h3 className='text-sm font-semibold text-gray-900 dark:text-gray-100'>
+                    服务器离线下载
+                  </h3>
+                  {offlineMode && (
+                    <span className='px-2 py-0.5 text-xs font-medium bg-blue-500 text-white rounded'>
+                      已启用
+                    </span>
+                  )}
+                </div>
+                <p className='text-xs text-gray-600 dark:text-gray-400 mt-0.5'>
+                  开启后将在服务器端下载视频文件，支持断点续传和后台下载
+                </p>
+              </div>
+            </div>
+            {/* 开关 */}
+            <button
+              onClick={() => setOfflineMode(!offlineMode)}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                offlineMode
+                  ? 'bg-blue-600'
+                  : 'bg-gray-300 dark:bg-gray-600'
+              }`}
+            >
+              <span
+                className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition-transform ${
+                  offlineMode ? 'translate-x-6' : 'translate-x-1'
+                }`}
+              />
+            </button>
+          </div>
+        )}
 
         {/* 分页标签 */}
         {pageCount > 1 && (
@@ -283,9 +336,13 @@ const DownloadEpisodeSelector: React.FC<DownloadEpisodeSelectorProps> = ({
             <button
               onClick={handleDownload}
               disabled={selectedEpisodes.size === 0}
-              className='px-4 py-2 text-sm font-medium text-white bg-green-500 hover:bg-green-600 dark:bg-green-600 dark:hover:bg-green-700 rounded-md transition-colors shadow-md disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-green-500'
+              className={`px-4 py-2 text-sm font-medium text-white rounded-md transition-colors shadow-md disabled:opacity-50 disabled:cursor-not-allowed ${
+                offlineMode && enableOfflineDownload && hasOfflinePermission
+                  ? 'bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800'
+                  : 'bg-green-500 hover:bg-green-600 dark:bg-green-600 dark:hover:bg-green-700 disabled:hover:bg-green-500'
+              }`}
             >
-              下载 {selectedEpisodes.size > 0 && `(${selectedEpisodes.size})`}
+              {offlineMode && enableOfflineDownload && hasOfflinePermission ? '离线' : ''}下载 {selectedEpisodes.size > 0 && `(${selectedEpisodes.size})`}
             </button>
           </div>
         </div>
