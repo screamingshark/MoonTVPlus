@@ -106,7 +106,6 @@ export const UserMenu: React.FC = () => {
   const [bufferStrategy, setBufferStrategy] = useState('medium');
   const [nextEpisodePreCache, setNextEpisodePreCache] = useState(true);
   const [nextEpisodeDanmakuPreload, setNextEpisodeDanmakuPreload] = useState(true);
-  const [isBufferStrategyDropdownOpen, setIsBufferStrategyDropdownOpen] = useState(false);
   const [searchTraditionalToSimplified, setSearchTraditionalToSimplified] = useState(false);
 
   // 折叠面板状态
@@ -429,23 +428,6 @@ export const UserMenu: React.FC = () => {
     }
   }, [isDoubanImageProxyDropdownOpen]);
 
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (isBufferStrategyDropdownOpen) {
-        const target = event.target as Element;
-        if (!target.closest('[data-dropdown="buffer-strategy"]')) {
-          setIsBufferStrategyDropdownOpen(false);
-        }
-      }
-    };
-
-    if (isBufferStrategyDropdownOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-      return () =>
-        document.removeEventListener('mousedown', handleClickOutside);
-    }
-  }, [isBufferStrategyDropdownOpen]);
-
   const handleMenuClick = () => {
     setIsOpen(!isOpen);
   };
@@ -645,6 +627,19 @@ export const UserMenu: React.FC = () => {
     if (typeof window !== 'undefined') {
       localStorage.setItem('bufferStrategy', value);
     }
+  };
+
+  // 将滑块值转换为策略值
+  const getBufferStrategyFromSlider = (sliderValue: number): string => {
+    const strategies = ['low', 'medium', 'high', 'ultra'];
+    return strategies[sliderValue] || 'medium';
+  };
+
+  // 将策略值转换为滑块值
+  const getSliderValueFromStrategy = (strategy: string): number => {
+    const strategies = ['low', 'medium', 'high', 'ultra'];
+    const index = strategies.indexOf(strategy);
+    return index >= 0 ? index : 1; // 默认返回 1 (medium)
   };
 
   const handleNextEpisodePreCacheToggle = (value: boolean) => {
@@ -1515,52 +1510,50 @@ export const UserMenu: React.FC = () => {
                         设置视频缓冲块大小，影响播放流畅度和流量消耗
                       </p>
                     </div>
-                    <div className='relative' data-dropdown='buffer-strategy'>
-                      {/* 自定义下拉选择框 */}
-                      <button
-                        type='button'
-                        onClick={() => setIsBufferStrategyDropdownOpen(!isBufferStrategyDropdownOpen)}
-                        className='w-full px-3 py-2.5 pr-10 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 shadow-sm hover:border-gray-400 dark:hover:border-gray-500 text-left'
-                      >
+
+                    {/* 滑块控件 */}
+                    <div className='space-y-2'>
+                      <input
+                        type='range'
+                        min='0'
+                        max='3'
+                        step='1'
+                        value={getSliderValueFromStrategy(bufferStrategy)}
+                        onChange={(e) => {
+                          const sliderValue = parseInt(e.target.value);
+                          const strategy = getBufferStrategyFromSlider(sliderValue);
+                          handleBufferStrategyChange(strategy);
+                        }}
+                        className='w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-green-500'
+                        style={{
+                          background: `linear-gradient(to right, rgb(34 197 94) 0%, rgb(34 197 94) ${(getSliderValueFromStrategy(bufferStrategy) / 3) * 100}%, rgb(229 231 235) ${(getSliderValueFromStrategy(bufferStrategy) / 3) * 100}%, rgb(229 231 235) 100%)`
+                        }}
+                      />
+
+                      {/* 标签显示 */}
+                      <div className='flex justify-between text-xs text-gray-500 dark:text-gray-400 px-1'>
+                        <span className={bufferStrategy === 'low' ? 'font-semibold text-green-600 dark:text-green-400' : ''}>
+                          低缓冲
+                        </span>
+                        <span className={bufferStrategy === 'medium' ? 'font-semibold text-green-600 dark:text-green-400' : ''}>
+                          中缓冲
+                        </span>
+                        <span className={bufferStrategy === 'high' ? 'font-semibold text-green-600 dark:text-green-400' : ''}>
+                          高缓冲
+                        </span>
+                        <span className={bufferStrategy === 'ultra' ? 'font-semibold text-green-600 dark:text-green-400' : ''}>
+                          超高缓冲
+                        </span>
+                      </div>
+
+                      {/* 当前选择的说明 */}
+                      <div className='text-center text-sm font-medium text-gray-700 dark:text-gray-300 mt-2'>
                         {
                           bufferStrategyOptions.find(
                             (option) => option.value === bufferStrategy
                           )?.label
                         }
-                      </button>
-
-                      {/* 下拉箭头 */}
-                      <div className='absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none'>
-                        <ChevronDown
-                          className={`w-4 h-4 text-gray-400 dark:text-gray-500 transition-transform duration-200 ${isBufferStrategyDropdownOpen ? 'rotate-180' : ''
-                            }`}
-                        />
                       </div>
-
-                      {/* 下拉选项列表 */}
-                      {isBufferStrategyDropdownOpen && (
-                        <div className='absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-60 overflow-auto'>
-                          {bufferStrategyOptions.map((option) => (
-                            <button
-                              key={option.value}
-                              type='button'
-                              onClick={() => {
-                                handleBufferStrategyChange(option.value);
-                                setIsBufferStrategyDropdownOpen(false);
-                              }}
-                              className={`w-full px-3 py-2.5 text-left text-sm transition-colors duration-150 flex items-center justify-between hover:bg-gray-100 dark:hover:bg-gray-700 ${bufferStrategy === option.value
-                                ? 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400'
-                                : 'text-gray-900 dark:text-gray-100'
-                                }`}
-                            >
-                              <span className='truncate'>{option.label}</span>
-                              {bufferStrategy === option.value && (
-                                <Check className='w-4 h-4 text-green-600 dark:text-green-400 flex-shrink-0 ml-2' />
-                              )}
-                            </button>
-                          ))}
-                        </div>
-                      )}
                     </div>
                   </div>
 
